@@ -16,13 +16,13 @@ class BaseTrainer(ABC):
         super(BaseTrainer, self).__init__()
         self.device = DEVICE
         self.model = model.to(device)
-        self.logger = logger
+        self.logger = logger()
         self.loss_fn = loss_fn
         self.total_step = 0
         self.optimizer = optimizer
 
     def log(self, name, data):
-        self.logger.log(name, data)
+        self.logger.log(name, data=data)
 
     def batch_to_device(self, batch) -> Tuple:
         if batch is not tuple:
