@@ -56,7 +56,7 @@ class BaseTrainer(ABC):
                 batch = self.batch_to_device(batch)
                 loss = self.val_step(*batch, epoch=epoch, train_step=val_step)
                 losses += loss.item()
-                pbar.set_description(f'Training phase loss: {loss.item()}')
+                pbar.set_description(f'Evaluating phase loss: {loss.item()}')
                 pbar.update()
         self.log('val losses', losses / len(val_dataloader))
         return losses
