@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
-from .loggers.Printlogger import Printlogger
-from tqdm import tqdm
-from typing import Dict, Any
+from typing import Tuple
+
 import torch
 from torch import nn
+from tqdm import tqdm
+
+from .loggers.Printlogger import Printlogger
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -19,18 +21,30 @@ class BaseTrainer(ABC):
         self.total_step = 0
         self.optimizer = optimizer
 
+    def log(self, name, data):
+        self.logger.log(name, data)
+
+    def batch_to_device(self, batch) -> Tuple:
+        if batch is not tuple:
+            batch = (t.to(self.device) for t in batch)
+        else:
+            batch = (batch.to(self.device),)
+        return batch
+
     def train_epoch(self, train_dataloader, epoch, pbar):
         self.model.train()
         losses = 0
         pbar.set_description(f'Training phase')
         for train_step, batch in enumerate(train_dataloader):
-            loss = self.train_step(*batch if batch is tuple else batch, epoch=epoch, train_step=train_step)
+            batch = self.batch_to_device(batch)
+            loss = self.train_step(*batch, epoch=epoch, train_step=train_step)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
             losses += loss.item()
-            pbar.update()
             pbar.set_description(f'Training phase loss: {loss.item()}')
+            pbar.update()
+        self.log('train loss', losses / len(train_dataloader))
         return losses
 
     def evaluate(self, val_dataloader, epoch, pbar):
@@ -39,10 +53,13 @@ class BaseTrainer(ABC):
         losses = 0
         with torch.no_grad():
             for val_step, batch in enumerate(val_dataloader):
-                loss = self.val_step(*batch if batch is tuple else batch, epoch=epoch, train_step=val_step)
+                batch = self.batch_to_device(batch)
+                loss = self.val_step(*batch, epoch=epoch, train_step=val_step)
                 losses += loss.item()
-                pbar.update()
                 pbar.set_description(f'Training phase loss: {loss.item()}')
+                pbar.update()
+        self.log('val losses', losses / len(val_dataloader))
+        return losses
 
     def fit(self, train_dataloader, val_dataloader, epoch_num=20):
         val_size = len(val_dataloader)
@@ -62,5 +79,3 @@ class BaseTrainer(ABC):
     @abstractmethod
     def val_step(self, *args, **kwargs):
         raise NotImplementedError("create class for training don't use BaseTrainer")
-
-

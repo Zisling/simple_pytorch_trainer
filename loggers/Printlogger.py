@@ -14,5 +14,5 @@ class Printlogger(ABC):
             self.log(name, data)
 
     @abstractmethod
-    def log(self, name, data):
+    def log(self, name: str, data: Any):
         tqdm.write(f'{name}: {data}')
