@@ -43,7 +43,7 @@ class BaseTrainer(ABC):
         self.model.train()
         losses = 0
         pbar.set_description(f'Training phase')
-        for train_step, batch in enumerate(train_dataloader):
+        for train_step, batch in enumerate(tqdm(train_dataloader, leave=False)):
             loss = self.train_step_core(batch, epoch=epoch, train_step=train_step)
             losses += loss.item()
             pbar.set_description(f'Training phase loss: {loss.item()}')
@@ -56,7 +56,7 @@ class BaseTrainer(ABC):
         self.model.eval()
         losses = 0
         with torch.no_grad():
-            for val_step, batch in enumerate(val_dataloader):
+            for val_step, batch in enumerate(tqdm(val_dataloader, leave=False)):
                 batch = self.batch_to_device(batch)
                 loss = self.val_step(*batch, epoch=epoch, val_step=val_step)
                 losses += loss.item()
