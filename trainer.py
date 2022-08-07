@@ -5,18 +5,18 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from .loggers.Printlogger import Printlogger
+from .loggers.Loggers import PrintLogger
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class BaseTrainer(ABC):
 
-    def __init__(self, model: nn.Module, loss_fn, optimizer, device=DEVICE, logger=Printlogger):
+    def __init__(self, model: nn.Module, loss_fn, optimizer, device=DEVICE, logger=None):
         super(BaseTrainer, self).__init__()
         self.device = DEVICE
         self.model = model.to(device)
-        self.logger = logger()
+        self.logger = PrintLogger() if logger is None else logger
         self.loss_fn = loss_fn
         self.total_step = 0
         self.optimizer = optimizer
@@ -48,7 +48,7 @@ class BaseTrainer(ABC):
             losses += loss.item()
             pbar.set_description(f'Training phase loss: {loss.item()}')
             pbar.update()
-        self.log('train loss', losses / len(train_dataloader))
+        self.log('train/total_loss', losses / len(train_dataloader))
         return losses
 
     def evaluate(self, val_dataloader, epoch, pbar):
@@ -62,7 +62,7 @@ class BaseTrainer(ABC):
                 losses += loss.item()
                 pbar.set_description(f'Evaluating phase loss: {loss.item()}')
                 pbar.update()
-        self.log('val losses', losses / len(val_dataloader))
+        self.log('val/total_losses', losses / len(val_dataloader))
         return losses
 
     def fit(self, train_dataloader, val_dataloader, epoch_num=20):
@@ -75,6 +75,7 @@ class BaseTrainer(ABC):
                 self.train_epoch(train_dataloader, epoch, pbar)
                 # evaluating
                 self.evaluate(val_dataloader, epoch, pbar)
+        self.logger.stop()
 
     @abstractmethod
     def train_step(self, *args, **kwargs):
