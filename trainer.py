@@ -21,8 +21,8 @@ class BaseTrainer(ABC):
         self.total_step = 0
         self.optimizer = optimizer
 
-    def log(self, name, data):
-        self.logger.log(name, data=data)
+    def log(self, name, data, on_step=True):
+        self.logger.log(name, data=data, on_step=on_step)
 
     def batch_to_device(self, batch) -> Tuple:
         if batch is not tuple:
@@ -48,7 +48,7 @@ class BaseTrainer(ABC):
             losses += loss.item()
             pbar.set_description(f'Training phase loss: {loss.item()}')
             pbar.update()
-        self.log('train/total_loss', losses / len(train_dataloader))
+        # self.log('train/total_loss', losses / len(train_dataloader))
         return losses
 
     def evaluate(self, val_dataloader, epoch, pbar):
@@ -62,7 +62,7 @@ class BaseTrainer(ABC):
                 losses += loss.item()
                 pbar.set_description(f'Evaluating phase loss: {loss.item()}')
                 pbar.update()
-        self.log('val/total_losses', losses / len(val_dataloader))
+        # self.log('val/total_losses', losses / len(val_dataloader))
         return losses
 
     def fit(self, train_dataloader, val_dataloader, epoch_num=20):
@@ -75,6 +75,7 @@ class BaseTrainer(ABC):
                 self.train_epoch(train_dataloader, epoch, pbar)
                 # evaluating
                 self.evaluate(val_dataloader, epoch, pbar)
+            self.logger.epoc_end()
         self.logger.stop()
 
     @abstractmethod
