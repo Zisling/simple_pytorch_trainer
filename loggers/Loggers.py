@@ -18,12 +18,12 @@ class PrintLogger(ABC):
         if on_step:
             self._log(name, data)
         else:
-            self._epoc_log(name, data)
+            self._epoch_log(name, data)
 
     def _log(self, name: str, data: Any):
         tqdm.write(f'{name}: {data}')
 
-    def _epoc_log(self, name: str, data: Any):
+    def _epoch_log(self, name: str, data: Any):
         if name in self.name_value:
             self.name_value[name] += data
             self.name_step[name] += 1
