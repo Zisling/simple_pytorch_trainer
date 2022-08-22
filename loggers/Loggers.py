@@ -1,4 +1,8 @@
 from abc import ABC, abstractmethod
+
+import numpy as np
+import torch
+from torch import nn
 from tqdm import tqdm
 from typing import Dict, Any
 import neptune.new as neptune
@@ -9,7 +13,6 @@ class PrintLogger(ABC):
     def __init__(self):
         super(PrintLogger, self).__init__()
         self.name_value = {}
-        self.name_step = {}
 
     def __enter__(self):
         return self
@@ -26,16 +29,13 @@ class PrintLogger(ABC):
     def _epoch_log(self, name: str, data: Any):
         if name in self.name_value:
             self.name_value[name] += data
-            self.name_step[name] += 1
         else:
             self.name_value[name] = data
-            self.name_step[name] = 1
 
     def epoc_end(self):
         for name, value in self.name_value.items():
-            self._log(name, value / self.name_step[name])
+            self._log(name, np.mean(value))
         self.name_value = {}
-        self.name_step = {}
 
     def stop(self):
         pass
@@ -43,13 +43,16 @@ class PrintLogger(ABC):
     def __exit__(self):
         self.stop()
 
+    def save_model(self, model: nn.Module, path: str):
+        torch.save(model.state_dict(), path)
+
 
 class NeptuneLogger(PrintLogger):
 
-    def __init__(self, project_name, api_token, Parmas=None):
+    def __init__(self, project_name, api_token, params=None):
         super(NeptuneLogger, self).__init__()
         self.run = neptune.init(project=project_name, api_token=api_token)
-        self.run["parameters"] = Parmas
+        self.run["parameters"] = params
 
     def _log(self, name: str, data: Any):
         self.run[name].log(data)

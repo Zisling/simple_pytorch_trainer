@@ -48,7 +48,6 @@ class BaseTrainer(ABC):
             losses += loss.item()
             pbar.set_description(f'Training phase loss: {loss.item()}')
             pbar.update()
-        # self.log('train/total_loss', losses / len(train_dataloader))
         return losses
 
     def evaluate(self, val_dataloader, epoch, pbar):
@@ -62,7 +61,6 @@ class BaseTrainer(ABC):
                 losses += loss.item()
                 pbar.set_description(f'Evaluating phase loss: {loss.item()}')
                 pbar.update()
-        # self.log('val/total_losses', losses / len(val_dataloader))
         return losses
 
     def fit(self, train_dataloader, val_dataloader, epoch_num=20):
@@ -87,5 +85,10 @@ class BaseTrainer(ABC):
     def val_step(self, *args, **kwargs):
         raise NotImplementedError("create class for training don't use BaseTrainer")
 
-    def val_epoch_end(self, epoch):
+    def val_epoch_end(self, epoch: int):
         pass
+
+    # Model saving
+
+    def save_model(self, path: str):
+        self.logger.save_model(self.model, path)
