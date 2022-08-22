@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
-
+from typing import Tuple, Dict
 import torch
 from torch import nn
+from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 
 from .loggers.Loggers import PrintLogger
@@ -12,7 +12,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class BaseTrainer(ABC):
 
-    def __init__(self, model: nn.Module, loss_fn, optimizer, device=DEVICE, logger=None):
+    def __init__(self, model: nn.Module, loss_fn, optimizer: Optimizer, device=DEVICE, logger=None, checkpoint=None):
         super(BaseTrainer, self).__init__()
         self.device = DEVICE
         self.model = model.to(device)
@@ -20,9 +20,12 @@ class BaseTrainer(ABC):
         self.loss_fn = loss_fn
         self.total_step = 0
         self.optimizer = optimizer
+        if checkpoint is not None:
+            self.logger.set_metrics_to_track(checkpoint.metrics_to_track)
+        self.checkpoint = checkpoint
 
-    def log(self, name, data, on_step=True):
-        self.logger.log(name, data=data, on_step=on_step)
+    def log(self, name, data, on_step=True, average_over_epoch=False):
+        self.logger.log(name, data=data, on_step=on_step, average_over_epoch=average_over_epoch)
 
     def batch_to_device(self, batch) -> Tuple:
         if batch is not tuple:
@@ -73,8 +76,9 @@ class BaseTrainer(ABC):
                 self.train_epoch(train_dataloader, epoch, pbar)
                 # evaluating
                 self.evaluate(val_dataloader, epoch, pbar)
+                self.logger.epoch_end()
                 self.val_epoch_end(epoch)
-            self.logger.epoc_end()
+                self.save_callback(epoch)
         self.logger.stop()
 
     @abstractmethod
@@ -91,4 +95,63 @@ class BaseTrainer(ABC):
     # Model saving
 
     def save_model(self, path: str):
-        self.logger.save_model(self.model, path)
+        """
+        this function is for saving the model state_dict
+        .pth file extension
+        https://pytorch.org/tutorials/beginner/saving_loading_models.html#saving-loading-model-for-inference
+        :param path: the full path including the file name and the file extension
+        :return:
+        """
+        torch.save(self.model.state_dict(), path)
+
+    def load_model(self, path: str):
+        self.model.load_state_dict(torch.load(path))
+
+    def save_entire_model(self, path: str):
+        """
+        this is the full model and to load you need the model class imported and load the model.
+        model = torch.load(path)
+        we don't use this file in load_model function just state dict
+        https://pytorch.org/tutorials/beginner/saving_loading_models.html#save-load-entire-model
+        :param path: the full path including the file name and the file extension
+        :return:
+        """
+        torch.save(self.model, path)
+
+    def save_torch_script(self, path: str):
+        """
+        This save the model in torch script
+        .pt file extension
+        https://pytorch.org/tutorials/beginner/saving_loading_models.html#export-load-model-in-torchscript-format
+        :param path: the full path including the file name and the file extension
+        :return:
+        """
+        model_scripted = torch.jit.script(self.model)
+        model_scripted.save(path)
+
+    def load_torch_script(self, path: str):
+        """
+        this load the model in torch script and overwrite the current model
+        :param path: the full path including the file name and the file extension
+        :return:
+        """
+        self.model = torch.jit.load(path)
+
+    def save_check_point(self, epoch, path, **kwargs):
+        """
+        https://pytorch.org/tutorials/recipes/recipes/saving_and_loading_a_general_checkpoint.html
+        :param epoch: the epoch number
+        :param path: the full path including the file name and the file extension
+        :return:
+        """
+        torch.save({'epoch': epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    **kwargs},
+                   path)
+
+    def save_callback(self, epoch):
+        if self.checkpoint is not None:
+            path = self.checkpoint.save_callback(self.logger.get_tracked_metrics(), epoch, self.model, self.optimizer)
+            if path is not None:
+                self.logger.upload_model(path)
