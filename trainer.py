@@ -75,6 +75,7 @@ class BaseTrainer(ABC):
                 self.train_epoch(train_dataloader, epoch, pbar)
                 # evaluating
                 self.evaluate(val_dataloader, epoch, pbar)
+                self.val_epoch_end(epoch)
             self.logger.epoc_end()
         self.logger.stop()
 
@@ -85,3 +86,6 @@ class BaseTrainer(ABC):
     @abstractmethod
     def val_step(self, *args, **kwargs):
         raise NotImplementedError("create class for training don't use BaseTrainer")
+
+    def val_epoch_end(self, epoch):
+        pass
