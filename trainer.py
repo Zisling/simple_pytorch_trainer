@@ -23,7 +23,6 @@ class BaseTrainer(ABC):
         if checkpoint is not None:
             self.logger.set_metrics_to_track(checkpoint.metrics_to_track)
         self.checkpoint = checkpoint
-
     def log(self, name, data, on_step=True, average_over_epoch=False):
         self.logger.log(name, data=data, on_step=on_step, average_over_epoch=average_over_epoch)
 
@@ -70,6 +69,7 @@ class BaseTrainer(ABC):
         val_size = len(val_dataloader)
         train_size = len(train_dataloader)
         total_epoch_steps = train_size + val_size
+        save_path = None
         for epoch in tqdm(range(epoch_num)):
             with tqdm(total=total_epoch_steps, leave=False) as pbar:
                 # training
@@ -78,7 +78,8 @@ class BaseTrainer(ABC):
                 self.evaluate(val_dataloader, epoch, pbar)
                 self.logger.epoch_end()
                 self.val_epoch_end(epoch)
-                self.save_callback(epoch)
+                save_path = self.save_callback(epoch)
+        self.logger.upload_model(save_path)
         self.logger.stop()
 
     @abstractmethod
@@ -152,6 +153,5 @@ class BaseTrainer(ABC):
 
     def save_callback(self, epoch):
         if self.checkpoint is not None:
-            path = self.checkpoint.save_callback(self.logger.get_tracked_metrics(), epoch, self.model, self.optimizer)
-            if path is not None:
-                self.logger.upload_model(path)
+            return self.checkpoint.save_callback(self.logger.get_tracked_metrics(), epoch, self.model, self.optimizer)
+        return None
