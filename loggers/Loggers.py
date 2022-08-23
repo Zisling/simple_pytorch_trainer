@@ -27,7 +27,7 @@ class PrintLogger(ABC):
     def stop(self):
         pass
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
         self.stop()
 
     def log(self, name: str, data: Any, on_step=True, average_over_epoch=False):
