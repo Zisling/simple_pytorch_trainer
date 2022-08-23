@@ -23,6 +23,7 @@ class BaseTrainer(ABC):
         if checkpoint is not None:
             self.logger.set_metrics_to_track(checkpoint.metrics_to_track)
         self.checkpoint = checkpoint
+
     def log(self, name, data, on_step=True, average_over_epoch=False):
         self.logger.log(name, data=data, on_step=on_step, average_over_epoch=average_over_epoch)
 
@@ -35,8 +36,8 @@ class BaseTrainer(ABC):
 
     def train_step_core(self, batch, **kwargs):
         batch = self.batch_to_device(batch)
-        loss = self.train_step(*batch, **kwargs)
         self.optimizer.zero_grad()
+        loss = self.train_step(*batch, **kwargs)
         loss.backward()
         self.optimizer.step()
         return loss

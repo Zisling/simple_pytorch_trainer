@@ -71,6 +71,13 @@ class PrintLogger(ABC):
     def upload_model(self, path):
         pass
 
+    def save_param(self, name: str, data: Any):
+        self.tracked_metrics[name] = data
+        self._save_param(name, data)
+
+    def _save_param(self, name: str, data: Any):
+        tqdm.write(f'{name}: {data}')
+
 
 class NeptuneLogger(PrintLogger):
 
@@ -87,3 +94,6 @@ class NeptuneLogger(PrintLogger):
 
     def upload_model(self, path):
         self.run['model_weights'].upload(path)
+
+    def _save_param(self, name: str, data: Any):
+        self.run[name] = data
