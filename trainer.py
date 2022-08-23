@@ -40,7 +40,7 @@ class BaseTrainer(ABC):
         loss = self.train_step(*batch, **kwargs)
         loss.backward()
         self.optimizer.step()
-        return loss
+        return loss.item()
 
     def train_epoch(self, train_dataloader, epoch, pbar):
         self.model.train()
@@ -48,7 +48,7 @@ class BaseTrainer(ABC):
         pbar.set_description(f'Training phase')
         for train_step, batch in enumerate(tqdm(train_dataloader, leave=False)):
             loss = self.train_step_core(batch, epoch=epoch, train_step=train_step)
-            losses += loss.item()
+            losses += loss
             pbar.set_description(f'Training phase loss: {loss.item()}')
             pbar.update()
         return losses
