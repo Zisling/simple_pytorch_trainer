@@ -49,7 +49,7 @@ class BaseTrainer(ABC):
         for train_step, batch in enumerate(tqdm(train_dataloader, leave=False)):
             loss = self.train_step_core(batch, epoch=epoch, train_step=train_step)
             losses += loss
-            pbar.set_description(f'Training phase loss: {loss.item()}')
+            pbar.set_description(f'Training phase loss: {loss}')
             pbar.update()
         return losses
 
@@ -81,7 +81,6 @@ class BaseTrainer(ABC):
                 self.val_epoch_end(epoch)
                 save_path = self.save_callback(epoch)
         self.logger.upload_model(save_path)
-        self.logger.stop()
 
     @abstractmethod
     def train_step(self, *args, **kwargs):
