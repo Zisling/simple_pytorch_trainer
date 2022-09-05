@@ -80,7 +80,8 @@ class BaseTrainer(ABC):
                 self.logger.epoch_end()
                 self.val_epoch_end(epoch)
                 save_path = self.save_callback(epoch)
-        self.logger.upload_model(save_path)
+        if save_path is not None:
+            self.logger.upload_model(save_path)
 
     @abstractmethod
     def train_step(self, *args, **kwargs):
