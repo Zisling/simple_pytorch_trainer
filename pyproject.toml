@@ -1,0 +1,27 @@
+[project]
+name = "spt"
+version = "0.0.1"
+authors = [
+  { name="Zisling", email="hedi120@gmail.com" },
+]
+description = "very simple pytorch traning"
+readme = "README.md"
+homepage = "https://github.com/Zisling/simple_pytorch_trainer"
+repository = "https://github.com/Zisling/simple_pytorch_trainer"
+documentation = "https://github.com/Zisling/simple_pytorch_trainer"
+license = { file="LICENSE" }
+requires-python = ">=3.8"
+
+keywords = ["ml", "pytorch", "trainer"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[dependencies]
+tqdm = "*"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
