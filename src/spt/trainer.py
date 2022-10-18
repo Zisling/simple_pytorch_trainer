@@ -13,10 +13,12 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class BaseTrainer(ABC):
 
     def __init__(self, model: nn.Module, loss_fn, optimizer: Optimizer, device=DEVICE, logger=None, checkpoint=None,
-                 disable_progress_bar=False):
+                 disable_progress_bar=False, fp16=False):
         super(BaseTrainer, self).__init__()
         self.device = DEVICE
         self.model = model.to(device)
+        if fp16:
+            self.model = model.half()
         self.logger = PrintLogger() if logger is None else logger
         self.loss_fn = loss_fn
         self.total_step = 0
@@ -25,15 +27,26 @@ class BaseTrainer(ABC):
             self.logger.set_metrics_to_track(checkpoint.metrics_to_track)
         self.checkpoint = checkpoint
         self.disable_pbar = disable_progress_bar
+        self.fp16 = fp16
 
     def log(self, name, data, on_step=True, average_over_epoch=False):
         self.logger.log(name, data=data, on_step=on_step, average_over_epoch=average_over_epoch)
 
     def batch_to_device(self, batch) -> Tuple:
         if batch is not tuple:
-            batch = (t.to(self.device) for t in batch)
+            if self.fp16:
+                batch = (t.to(self.device).half() if (t.dtype is torch.FloatTensor or t.dtype is torch.DoubleTensor)
+                         else t.to(self.device)
+                         for t in batch)
+            else:
+                batch = (t.to(self.device) for t in batch)
         else:
-            batch = (batch.to(self.device),)
+            if self.fp16:
+                batch = (batch.to(self.device).half(),) \
+                    if (batch.dtype is torch.FloatTensor or batch.dtype is torch.DoubleTensor) \
+                    else (batch.to(self.device), )
+            else:
+                batch = (batch.to(self.device),)
         return batch
 
     def train_step_core(self, batch, **kwargs):
