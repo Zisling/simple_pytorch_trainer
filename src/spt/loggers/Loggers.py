@@ -5,7 +5,7 @@ from torch import nn
 from tqdm import tqdm
 from typing import Dict, Any
 import neptune.new as neptune
-
+import matplotlib.pyplot as plt
 
 class PrintLogger(ABC):
 
@@ -40,6 +40,10 @@ class PrintLogger(ABC):
 
     def _log(self, name: str, data: Any):
         tqdm.write(f'{name}: {data}')
+
+    def log_fig(self, name: str, data: Any):
+        plt.imshow(data)
+        plt.show()
 
     def _epoch_log(self, name: str, data: Any):
         if name in self.name_value:
@@ -88,6 +92,9 @@ class NeptuneLogger(PrintLogger):
 
     def _log(self, name: str, data: Any):
         self.run[name].log(data)
+
+    def log_fig(self, name: str, data: Any):
+        self._log(name, data)
 
     def stop(self):
         self.run.stop()
