@@ -41,8 +41,7 @@ class PrintLogger(ABC):
     def _log(self, name: str, data: Any):
         tqdm.write(f'{name}: {data}')
 
-    def log_fig(self, name: str, data: Any):
-        plt.imshow(data)
+    def log_fig(self, name: str, fig: Any):
         plt.show()
 
     def _epoch_log(self, name: str, data: Any):
@@ -93,8 +92,8 @@ class NeptuneLogger(PrintLogger):
     def _log(self, name: str, data: Any):
         self.run[name].log(data)
 
-    def log_fig(self, name: str, data: Any):
-        self._log(name, data)
+    def log_fig(self, name: str, fig: Any):
+        self._log(name, fig)
 
     def stop(self):
         self.run.stop()

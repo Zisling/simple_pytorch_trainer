@@ -21,13 +21,35 @@ class BaseTrainer(ABC):
             self.model = model.half()
         self.logger = PrintLogger() if logger is None else logger
         self.loss_fn = loss_fn
-        self.total_step = 0
         self.optimizer = optimizer
         if checkpoint is not None:
             self.logger.set_metrics_to_track(checkpoint.metrics_to_track)
         self.checkpoint = checkpoint
         self.disable_pbar = disable_progress_bar
         self.fp16 = fp16
+        self._step = 0
+        self._train_step = 0
+        self._val_step = 0
+        self._epoch = 0
+        self._mod = 'train'
+
+    def get_val_step(self):
+        return self._val_step
+
+    def change_mod(self, mod):
+        self._mod = mod
+
+    def get_mod(self):
+        return self._mod
+
+    def get_epoch(self):
+        return self._epoch
+
+    def get_train_step(self):
+        return self._train_step
+
+    def get_step(self):
+        return self._step
 
     def log(self, name, data, on_step=True, average_over_epoch=False):
         self.logger.log(name, data=data, on_step=on_step, average_over_epoch=average_over_epoch)
@@ -58,10 +80,14 @@ class BaseTrainer(ABC):
         return loss.item()
 
     def train_epoch(self, train_dataloader, epoch, pbar):
+        self._train_step = 0
+        self.change_mod('train')
         self.model.train()
         losses = 0
         pbar.set_description(f'Training phase')
         for train_step, batch in enumerate(tqdm(train_dataloader, leave=False, disable=self.disable_pbar)):
+            self._step += 1
+            self._train_step = train_step
             loss = self.train_step_core(batch, epoch=epoch, train_step=train_step)
             losses += loss
             pbar.set_description(f'Training phase loss: {loss}')
@@ -69,11 +95,15 @@ class BaseTrainer(ABC):
         return losses
 
     def evaluate(self, val_dataloader, epoch, pbar):
+        self.change_mod('eval')
+        self._val_step = 0
         pbar.set_description(f'Evaluating phase')
         self.model.eval()
         losses = 0
         with torch.no_grad():
             for val_step, batch in enumerate(tqdm(val_dataloader, leave=False, disable=self.disable_pbar)):
+                self._step += 1
+                self._val_step = val_step
                 batch = self.batch_to_device(batch)
                 loss = self.val_step(*batch, epoch=epoch, val_step=val_step)
                 losses += loss.item()
@@ -87,6 +117,7 @@ class BaseTrainer(ABC):
         total_epoch_steps = train_size + val_size
         save_path = None
         for epoch in tqdm(range(epoch_num), disable=self.disable_pbar):
+            self._epoch = epoch
             with tqdm(total=total_epoch_steps, leave=False, disable=self.disable_pbar) as pbar:
                 # training
                 self.train_epoch(train_dataloader, epoch, pbar)
