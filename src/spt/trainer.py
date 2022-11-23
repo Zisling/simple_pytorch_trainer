@@ -5,7 +5,8 @@ from torch import nn
 from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 
-from trainer.src.spt.loggers.Loggers import PrintLogger
+from .loggers.Loggers import PrintLogger
+from .loggers.Loggers import LoggerHolder
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -20,6 +21,7 @@ class BaseTrainer(ABC):
         if fp16:
             self.model = model.half()
         self.logger = PrintLogger() if logger is None else logger
+        self.logger_holder = LoggerHolder(self.logger)
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         if checkpoint is not None:
@@ -27,29 +29,33 @@ class BaseTrainer(ABC):
         self.checkpoint = checkpoint
         self.disable_pbar = disable_progress_bar
         self.fp16 = fp16
-        self._step = 0
-        self._train_step = 0
-        self._val_step = 0
-        self._epoch = 0
-        self._mod = 'train'
+        # a common dict sheared by the logger and the trainer
+        self.state = {
+            'step': 0,
+            'train_step': 0,
+            'val_step': 0,
+            'epoch': 0,
+            'mod': 'train',
+        }
+        self.logger.set_state(self.state)
 
     def get_val_step(self):
-        return self._val_step
+        return self.state['val_step']
 
     def change_mod(self, mod):
-        self._mod = mod
+        self.state['mod'] = mod
 
     def get_mod(self):
-        return self._mod
+        return self.state['mod']
 
     def get_epoch(self):
-        return self._epoch
+        return self.state['epoch']
 
     def get_train_step(self):
-        return self._train_step
+        return self.state['train_step']
 
     def get_step(self):
-        return self._step
+        return self.state['step']
 
     def log(self, name, data, on_step=True, average_over_epoch=False):
         self.logger.log(name, data=data, on_step=on_step, average_over_epoch=average_over_epoch)
@@ -66,7 +72,7 @@ class BaseTrainer(ABC):
             if self.fp16:
                 batch = (batch.to(self.device).half(),) \
                     if (batch.dtype is torch.FloatTensor or batch.dtype is torch.DoubleTensor) \
-                    else (batch.to(self.device), )
+                    else (batch.to(self.device),)
             else:
                 batch = (batch.to(self.device),)
         return batch
@@ -80,14 +86,14 @@ class BaseTrainer(ABC):
         return loss.item()
 
     def train_epoch(self, train_dataloader, epoch, pbar):
-        self._train_step = 0
+        self.state['train_step'] = 0
         self.change_mod('train')
         self.model.train()
         losses = 0
         pbar.set_description(f'Training phase')
         for train_step, batch in enumerate(tqdm(train_dataloader, leave=False, disable=self.disable_pbar)):
-            self._step += 1
-            self._train_step = train_step
+            self.state['step'] += 1
+            self.state['train_step'] = train_step
             loss = self.train_step_core(batch, epoch=epoch, train_step=train_step)
             losses += loss
             pbar.set_description(f'Training phase loss: {loss}')
@@ -96,14 +102,14 @@ class BaseTrainer(ABC):
 
     def evaluate(self, val_dataloader, epoch, pbar):
         self.change_mod('eval')
-        self._val_step = 0
+        self.state['val_step'] = 0
         pbar.set_description(f'Evaluating phase')
         self.model.eval()
         losses = 0
         with torch.no_grad():
             for val_step, batch in enumerate(tqdm(val_dataloader, leave=False, disable=self.disable_pbar)):
-                self._step += 1
-                self._val_step = val_step
+                self.state['step'] += 1
+                self.state['val_step'] = val_step
                 batch = self.batch_to_device(batch)
                 loss = self.val_step(*batch, epoch=epoch, val_step=val_step)
                 losses += loss.item()
