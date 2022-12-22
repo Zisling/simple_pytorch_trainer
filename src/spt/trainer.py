@@ -123,7 +123,7 @@ class BaseTrainer(ABC):
         total_epoch_steps = train_size + val_size
         save_path = None
         for epoch in tqdm(range(epoch_num), disable=self.disable_pbar):
-            self._epoch = epoch
+            self.state['epoch'] = epoch
             with tqdm(total=total_epoch_steps, leave=False, disable=self.disable_pbar) as pbar:
                 # training
                 self.train_epoch(train_dataloader, epoch, pbar)
