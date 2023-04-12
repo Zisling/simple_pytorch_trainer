@@ -3,6 +3,7 @@ from typing import Tuple
 import torch
 from torch import nn
 from torch.optim.optimizer import Optimizer
+from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
 from .loggers.Loggers import PrintLogger
@@ -13,7 +14,8 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class BaseTrainer(ABC):
 
-    def __init__(self, model: nn.Module, loss_fn, optimizer: Optimizer, device=DEVICE, logger=None, checkpoint=None,
+    def __init__(self, model: nn.Module, loss_fn, optimizer: Optimizer, scheduler=None
+                 , device=DEVICE, logger=None, checkpoint=None,
                  disable_progress_bar=False, fp16=False):
         super(BaseTrainer, self).__init__()
         self.device = DEVICE
@@ -24,6 +26,10 @@ class BaseTrainer(ABC):
         self.logger_holder = LoggerHolder(self.logger)
         self.loss_fn = loss_fn
         self.optimizer = optimizer
+        if scheduler is None:
+            self.scheduler = StepLR(optimizer, step_size=5, gamma=0.9)
+        else:
+            self.scheduler = scheduler(optimizer)
         if checkpoint is not None:
             self.logger.set_metrics_to_track(checkpoint.metrics_to_track)
         self.checkpoint = checkpoint
@@ -98,6 +104,7 @@ class BaseTrainer(ABC):
             losses += loss
             pbar.set_description(f'Training phase loss: {loss}')
             pbar.update()
+        self.scheduler.step()
         return losses
 
     def evaluate(self, val_dataloader, epoch, pbar):
